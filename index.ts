@@ -3,25 +3,25 @@ console.log("Hello via Bun!");
 
 // "ts-pattern" package example
 
-import { match } from "ts-pattern";
+import { match,isMatching } from "ts-pattern";
 import { z, ZodSchema } from "zod";
 
 async function $get<Z extends ZodSchema>(
   schema: Z,
   ...args: Parameters<typeof fetch>
-): Promise<Z|unknown> {
+): Promise<{ type: "success"; data: Z } | { type: "error"; error: unknown }> {
   const [input, init] = args;
   try {
-    let res = await fetch(input, {
+    return await fetch(input, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       ...init,
-    });
-    res = await res.json();
-    res = schema.parse(res);
-    return res as unknown as Z;
-  } catch (error) {
-    return error;
+    })
+      .then((r) => r.json())
+      .then(schema.parse)
+      .then((r) => ({ type: "success", data: r }));
+  } catch (e) {
+    return { type: "error", error: e };
   }
 }
 
@@ -63,8 +63,10 @@ function identity<T>(val: T): T {
   return val;
 }
 
-const isError = (e: unknown) => e instanceof Error;
-const mapMessage = (e: Error) => e.message;
+
+const isError = (e:{type:"error",error:unknown}) => e.error instanceof Error;
+
+const mapMessage = (e: {type:"error",error:Error}) => e.error.message;
 
 const mapped = match(res)
   .when((s) => s, identity)
