@@ -1,9 +1,4 @@
-console.log("Hello via Bun!");
-//https://www.npmjs.com/package/zod-request
-
-// "ts-pattern" package example
-
-import { match,isMatching } from "ts-pattern";
+import { match, isMatching } from "ts-pattern";
 import { z, ZodSchema } from "zod";
 
 async function $get<Z extends ZodSchema>(
@@ -57,20 +52,22 @@ const Pokemon = z.object({
   }),
 });
 type Pokemon = z.infer<typeof Pokemon>;
-const res = await $get(Pokemon, "https://pokeapi.co/api/v2/pokeon/1");
+const res = await $get(Pokemon, "https://pokeapi.co/api/v2/pokemon/1");
 
-function identity<T>(val: T): T {
-  return val;
+function identity<T>(val: { type: "success"; data: T }): T {
+  return val.data;
 }
 
-
-const isError = (e:{type:"error",error:unknown}) => e.error instanceof Error;
-
-const mapMessage = (e: {type:"error",error:Error}) => e.error.message;
+const mapMessage = (e: { type: "error"; error: Error }) => ({error:e.error.message});
 
 const mapped = match(res)
-  .when((s) => s, identity)
-  .when(isError, mapMessage)
+  .with({ type: "success" }, identity)
+  .with({ type: "error" }, mapMessage)
   .otherwise(() => ({ error: "unexpected" }));
 
 console.log(mapped);
+
+// The path can be either a local path or an url
+imageToAscii(mapped, (err, converted) => {
+    console.log(err || converted);
+});
