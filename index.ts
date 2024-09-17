@@ -6,18 +6,23 @@ console.log("Hello via Bun!");
 import { match } from "ts-pattern";
 import { z, ZodSchema } from "zod";
 
-function $get<Z extends ZodSchema>(
+async function $get<Z extends ZodSchema>(
   schema: Z,
   ...args: Parameters<typeof fetch>
-): Promise<Z> {
+): Promise<Z|unknown> {
   const [input, init] = args;
-  return fetch(input, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  })
-    .then((r) => r.json())
-    .then(schema.parse);
+  try {
+    let res = await fetch(input, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      ...init,
+    });
+    res = await res.json();
+    res = schema.parse(res);
+    return res as unknown as Z;
+  } catch (error) {
+    return error;
+  }
 }
 
 const Pokemon = z.object({
@@ -52,21 +57,17 @@ const Pokemon = z.object({
   }),
 });
 type Pokemon = z.infer<typeof Pokemon>;
-const res = await $get(Pokemon, "https://pokeapi.co/api/v2/pokemon/1");
-
-function isExpected<T>(val: T): T {
-  return val;
-}
+const res = await $get(Pokemon, "https://pokeapi.co/api/v2/pokeon/1");
 
 function identity<T>(val: T): T {
-    return val;
-  }
+  return val;
+}
 
 const isError = (e: unknown) => e instanceof Error;
 const mapMessage = (e: Error) => e.message;
 
 const mapped = match(res)
-  .when((s)=>s, identity)
+  .when((s) => s, identity)
   .when(isError, mapMessage)
   .otherwise(() => ({ error: "unexpected" }));
 
