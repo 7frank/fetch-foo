@@ -67,7 +67,3 @@ const mapped = match(res)
 
 console.log(mapped);
 
-// The path can be either a local path or an url
-imageToAscii(mapped, (err, converted) => {
-    console.log(err || converted);
-});
